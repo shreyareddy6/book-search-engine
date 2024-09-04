@@ -1,14 +1,16 @@
-// see SignupForm.js for comments
 import { useState } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
-
-import { loginUser } from '../utils/API';
+import { useMutation } from '@apollo/client';  // Import useMutation from Apollo Client
+import { LOGIN_USER } from '../utils/mutations';  // Import the LOGIN_USER mutation
 import Auth from '../utils/auth';
 
 const LoginForm = () => {
   const [userFormData, setUserFormData] = useState({ email: '', password: '' });
   const [validated] = useState(false);
   const [showAlert, setShowAlert] = useState(false);
+
+  // Set up the LOGIN_USER mutation with useMutation hook
+  const [login, { error }] = useMutation(LOGIN_USER);
 
   const handleInputChange = (event) => {
     const { name, value } = event.target;
@@ -26,22 +28,19 @@ const LoginForm = () => {
     }
 
     try {
-      const response = await loginUser(userFormData);
+      // Use the login mutation
+      const { data } = await login({
+        variables: { ...userFormData }, // Pass userFormData to the mutation
+      });
 
-      if (!response.ok) {
-        throw new Error('something went wrong!');
-      }
-
-      const { token, user } = await response.json();
-      console.log(user);
-      Auth.login(token);
+      const { token } = data.login;
+      Auth.login(token); // Log the user in after successful login
     } catch (err) {
       console.error(err);
-      setShowAlert(true);
+      setShowAlert(true); // Show error alert if something goes wrong
     }
 
     setUserFormData({
-      username: '',
       email: '',
       password: '',
     });
@@ -50,7 +49,7 @@ const LoginForm = () => {
   return (
     <>
       <Form noValidate validated={validated} onSubmit={handleFormSubmit}>
-        <Alert dismissible onClose={() => setShowAlert(false)} show={showAlert} variant='danger'>
+        <Alert dismissible onClose={() => setShowAlert(false)} show={showAlert || error} variant='danger'>
           Something went wrong with your login credentials!
         </Alert>
         <Form.Group className='mb-3'>
